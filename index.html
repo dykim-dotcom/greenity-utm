@@ -680,6 +680,13 @@ let supabase = null;
 let codesCache = {}; // { field_key: [{id, label, value, sort_order}] }
 let isConnected = false;
 
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+  ]);
+}
+
 async function initSupabase() {
   if (!CONFIG.supabaseUrl || CONFIG.supabaseUrl === 'YOUR_SUPABASE_URL') {
     setDbStatus(false, 'Supabase 미연결 (기본값 사용)');
@@ -688,7 +695,10 @@ async function initSupabase() {
   }
   try {
     supabase = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
-    const { error } = await supabase.from('utm_codes').select('id').limit(1);
+    const { error } = await withTimeout(
+      supabase.from('utm_codes').select('id').limit(1),
+      6000
+    );
     if (error) throw error;
     isConnected = true;
     setDbStatus(true, 'Supabase 연결됨');
