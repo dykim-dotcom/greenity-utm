@@ -676,7 +676,7 @@ const DEFAULT_CODES = {
 };
 
 // ==================== SUPABASE ====================
-let supabase = null;
+let sbClient = null;
 let codesCache = {}; // { field_key: [{id, label, value, sort_order}] }
 let isConnected = false;
 
@@ -688,15 +688,18 @@ function withTimeout(promise, ms) {
 }
 
 async function initSupabase() {
+  // 기본값 먼저 적용 → 페이지 즉시 사용 가능
+  useDefaultCodes();
+
   if (!CONFIG.supabaseUrl || CONFIG.supabaseUrl === 'YOUR_SUPABASE_URL') {
     setDbStatus(false, 'Supabase 미연결 (기본값 사용)');
-    useDefaultCodes();
     return;
   }
   try {
-    supabase = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
+    const { createClient } = window.supabase;
+    sbClient = createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
     const { error } = await withTimeout(
-      supabase.from('utm_codes').select('id').limit(1),
+      sbClient.from('utm_codes').select('id').limit(1),
       6000
     );
     if (error) throw error;
@@ -706,7 +709,6 @@ async function initSupabase() {
   } catch (e) {
     console.warn('Supabase 연결 실패:', e);
     setDbStatus(false, 'DB 연결 실패 (기본값 사용)');
-    useDefaultCodes();
   }
 }
 
@@ -718,7 +720,7 @@ function setDbStatus(connected, text) {
 async function loadCodesFromDB() {
   showLoading(true);
   try {
-    const { data, error } = await supabase
+    const { data, error } = await sbClient
       .from('utm_codes')
       .select('*')
       .order('field_key')
@@ -752,7 +754,7 @@ async function seedDefaultCodes() {
       rows.push({ field_key: key, label: item.label, value: item.value, sort_order: i });
     });
   }
-  const { error } = await supabase.from('utm_codes').insert(rows);
+  const { error } = await sbClient.from('utm_codes').insert(rows);
   if (!error) {
     showToast('초기 데이터를 Supabase에 저장했습니다.', 'success');
     await loadCodesFromDB();
@@ -966,7 +968,7 @@ async function addCode(fieldKey) {
   const sort_order = items.length;
 
   if (isConnected) {
-    const { data, error } = await supabase.from('utm_codes')
+    const { data, error } = await sbClient.from('utm_codes')
       .insert({ field_key: fieldKey, label, value, sort_order })
       .select().single();
     if (error) { showToast('저장 실패: ' + error.message, 'error'); return; }
@@ -991,7 +993,7 @@ async function editCode(fieldKey, id, oldLabel, oldValue) {
   if (!newLabel.trim() || !newValue.trim()) { showToast('값을 입력해주세요.', 'error'); return; }
 
   if (isConnected && id) {
-    const { error } = await supabase.from('utm_codes').update({ label: newLabel.trim(), value: newValue.trim() }).eq('id', id);
+    const { error } = await sbClient.from('utm_codes').update({ label: newLabel.trim(), value: newValue.trim() }).eq('id', id);
     if (error) { showToast('수정 실패: ' + error.message, 'error'); return; }
   }
 
@@ -1006,7 +1008,7 @@ async function deleteCode(fieldKey, id, label) {
   if (!confirm(`"${label}" 항목을 삭제하시겠습니까?`)) return;
 
   if (isConnected && id) {
-    const { error } = await supabase.from('utm_codes').delete().eq('id', id);
+    const { error } = await sbClient.from('utm_codes').delete().eq('id', id);
     if (error) { showToast('삭제 실패: ' + error.message, 'error'); return; }
   }
 
