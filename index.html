@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UTM 생성기 — Greenity Corp</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --muted: #64748b;
+      --radius: 8px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* HEADER */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+    }
+    .logo { font-size: 16px; font-weight: 700; color: var(--primary); letter-spacing: -0.3px; }
+    .logo span { color: var(--text); font-weight: 400; }
+
+    /* TABS */
+    .tabs {
+      display: flex;
+      gap: 2px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+    }
+    .tab-btn {
+      padding: 12px 20px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all 0.15s;
+    }
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+    .tab-btn:hover:not(.active) { color: var(--text); }
+
+    /* MAIN */
+    main { max-width: 1100px; margin: 0 auto; padding: 28px 24px; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* SECTION */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* GRID */
+    .grid { display: grid; gap: 14px; }
+    .grid-4 { grid-template-columns: repeat(4, 1fr); }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+
+    @media (max-width: 768px) {
+      .grid-4, .grid-3 { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 480px) {
+      .grid-4, .grid-3 { grid-template-columns: 1fr; }
+    }
+
+    /* FIELD */
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+    .field select, .field input[type="text"], .field input[type="date"], .field input[type="url"] {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--text);
+      background: var(--surface);
+      transition: border-color 0.15s;
+      appearance: none;
+    }
+    .field select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
+    .field select:focus, .field input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+
+    /* BUTTONS */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 18px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--border); }
+    .btn-danger { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
+    .btn-danger:hover { background: #fee2e2; }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+    .btn-icon { padding: 6px 10px; }
+
+    .generate-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 20px 0 4px;
+    }
+
+    /* RESULTS */
+    .results-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: 16px;
+    }
+    .results-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 16px;
+    }
+    .result-item {
+      margin-bottom: 14px;
+    }
+    .result-item label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 5px;
+    }
+    .result-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .result-value {
+      flex: 1;
+      padding: 8px 12px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      color: var(--text);
+      word-break: break-all;
+      min-height: 36px;
+    }
+    .copy-btn {
+      flex-shrink: 0;
+      padding: 7px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      color: var(--muted);
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .copy-btn:hover { background: var(--border); color: var(--text); }
+    .copy-btn.copied { background: #dcfce7; border-color: #86efac; color: var(--success); }
+
+    /* HISTORY TABLE */
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    thead th {
+      text-align: left;
+      padding: 10px 12px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody td {
+      padding: 10px 12px;
+      vertical-align: top;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    tbody td.url-cell { max-width: 260px; }
+    tbody tr:hover { background: var(--bg); }
+    .empty-state {
+      text-align: center;
+      padding: 48px 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    /* SETTINGS */
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+    .settings-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .settings-card-header {
+      padding: 12px 16px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .settings-card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .settings-card-body { padding: 12px 16px; }
+    .code-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .code-item:last-child { border-bottom: none; }
+    .code-label { flex: 1; font-size: 13px; }
+    .code-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 7px;
+      background: #eff6ff;
+      color: var(--primary);
+      border-radius: 4px;
+      font-family: monospace;
+    }
+    .code-actions { display: flex; gap: 4px; }
+    .add-code-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+    .add-code-row input {
+      flex: 1;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      font-size: 12px;
+    }
+    .add-code-row input:focus { outline: none; border-color: var(--primary); }
+
+    /* TOAST */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toast {
+      padding: 12px 18px;
+      background: var(--text);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      animation: slideIn 0.2s ease;
+      max-width: 320px;
+    }
+    .toast.success { background: var(--success); }
+    .toast.error { background: var(--danger); }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* LOADING */
+    .loading-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(255,255,255,0.7);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .loading-overlay.show { display: flex; }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .url-link { color: var(--primary); text-decoration: none; }
+    .url-link:hover { text-decoration: underline; }
+
+    .db-status {
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .db-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #94a3b8;
+    }
+    .db-dot.connected { background: #22c55e; }
+  </style>
+</head>
+<body>
+
+<!-- CONFIG — Supabase 키 입력 -->
+<script>
+const CONFIG = {
+  supabaseUrl: 'YOUR_SUPABASE_URL',
+  supabaseKey: 'YOUR_SUPABASE_ANON_KEY'
+};
+</script>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Header -->
+<header>
+  <div class="header-inner">
+    <div class="logo">Greenity <span>UTM 생성기</span></div>
+    <div class="db-status" id="dbStatus">
+      <div class="db-dot" id="dbDot"></div>
+      <span id="dbStatusText">연결 중...</span>
+    </div>
+  </div>
+</header>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab-btn active" data-tab="generate">UTM 생성</button>
+  <button class="tab-btn" data-tab="history">히스토리</button>
+  <button class="tab-btn" data-tab="settings">설정</button>
+</div>
+
+<main>
+
+  <!-- ===== TAB 1: UTM 생성 ===== -->
+  <div class="tab-panel active" id="tab-generate">
+
+    <!-- 섹션 1: 캠페인 레벨 -->
+    <div class="section">
+      <div class="section-title">캠페인 레벨</div>
+      <div class="grid grid-4">
+        <div class="field">
+          <label>운영주체</label>
+          <select id="f_operator"></select>
+        </div>
+        <div class="field">
+          <label>브랜드 코드</label>
+          <select id="f_brand"></select>
+        </div>
+        <div class="field">
+          <label>채널 (utm_source)</label>
+          <select id="f_channel"></select>
+        </div>
+        <div class="field">
+          <label>프로모션 구분</label>
+          <select id="f_promo_type"></select>
+        </div>
+        <div class="field">
+          <label>캠페인 유형</label>
+          <select id="f_campaign_type"></select>
+        </div>
+        <div class="field">
+          <label>광고 상품 (utm_medium)</label>
+          <select id="f_ad_product"></select>
+        </div>
+        <div class="field">
+          <label>전환 목표</label>
+          <select id="f_conversion"></select>
+        </div>
+        <div class="field">
+          <label>OS</label>
+          <select id="f_os"></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 섹션 2: 광고그룹 레벨 -->
+    <div class="section">
+      <div class="section-title">광고그룹 레벨</div>
+      <div class="grid grid-4">
+        <div class="field">
+          <label>프로모션 상세</label>
+          <select id="f_promo_detail"></select>
+        </div>
+        <div class="field">
+          <label>지면</label>
+          <select id="f_placement"></select>
+        </div>
+        <div class="field">
+          <label>제품 코드</label>
+          <select id="f_product"></select>
+        </div>
+        <div class="field">
+          <label>타겟팅 방식</label>
+          <select id="f_targeting"></select>
+        </div>
+        <div class="field">
+          <label>디타겟팅</label>
+          <select id="f_detarget"></select>
+        </div>
+        <div class="field">
+          <label>연령</label>
+          <select id="f_age"></select>
+        </div>
+        <div class="field">
+          <label>성별</label>
+          <select id="f_gender"></select>
+        </div>
+        <div class="field">
+          <label>기기</label>
+          <select id="f_device"></select>
+        </div>
+        <div class="field">
+          <label>지역</label>
+          <select id="f_region"></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 섹션 3: 소재 레벨 -->
+    <div class="section">
+      <div class="section-title">소재 레벨</div>
+      <div class="grid grid-4">
+        <div class="field">
+          <label>소재 형태</label>
+          <select id="f_creative_type"></select>
+        </div>
+        <div class="field">
+          <label>핵심 USP</label>
+          <select id="f_usp"></select>
+        </div>
+        <div class="field">
+          <label>오브제 특징</label>
+          <select id="f_objet"></select>
+        </div>
+        <div class="field">
+          <label>광고 시작일</label>
+          <input type="date" id="f_date" />
+        </div>
+      </div>
+      <div style="margin-top: 14px;">
+        <div class="field">
+          <label>랜딩 URL</label>
+          <input type="url" id="f_landing_url" placeholder="https://example.com/product" />
+        </div>
+      </div>
+    </div>
+
+    <!-- 생성 버튼 -->
+    <div class="generate-bar">
+      <button class="btn btn-primary" onclick="generateUTM()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        UTM 생성하기
+      </button>
+    </div>
+
+    <!-- 결과 -->
+    <div class="results-section" id="resultsSection" style="display:none;">
+      <div class="results-title">생성 결과</div>
+      <div class="result-item">
+        <label>캠페인명 (utm_campaign)</label>
+        <div class="result-row">
+          <div class="result-value" id="res_campaign"></div>
+          <button class="copy-btn" onclick="copyResult('res_campaign', this)">복사</button>
+        </div>
+      </div>
+      <div class="result-item">
+        <label>광고그룹명 (utm_content)</label>
+        <div class="result-row">
+          <div class="result-value" id="res_adgroup"></div>
+          <button class="copy-btn" onclick="copyResult('res_adgroup', this)">복사</button>
+        </div>
+      </div>
+      <div class="result-item">
+        <label>소재명 (utm_term)</label>
+        <div class="result-row">
+          <div class="result-value" id="res_creative"></div>
+          <button class="copy-btn" onclick="copyResult('res_creative', this)">복사</button>
+        </div>
+      </div>
+      <div class="result-item">
+        <label>최종 UTM URL</label>
+        <div class="result-row">
+          <div class="result-value" id="res_url" style="font-size:12px;"></div>
+          <button class="copy-btn" onclick="copyResult('res_url', this)">복사</button>
+        </div>
+      </div>
+      <div style="margin-top: 12px; display: flex; justify-content: flex-end;">
+        <button class="btn btn-secondary" onclick="copyAll()">전체 복사</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== TAB 2: 히스토리 ===== -->
+  <div class="tab-panel" id="tab-history">
+    <div class="section">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <div class="section-title" style="margin:0; border:none; padding:0;">최근 생성 히스토리 (최대 50건)</div>
+        <button class="btn btn-danger btn-sm" onclick="clearHistory()">전체 삭제</button>
+      </div>
+      <div class="table-wrap">
+        <table id="historyTable">
+          <thead>
+            <tr>
+              <th>시간</th>
+              <th>캠페인명</th>
+              <th>광고그룹명</th>
+              <th>소재명</th>
+              <th>URL</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+      <div class="empty-state" id="historyEmpty" style="display:none;">
+        아직 생성된 히스토리가 없습니다.
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB 3: 설정 ===== -->
+  <div class="tab-panel" id="tab-settings">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+      <p style="font-size:13px; color:var(--muted);">코드 항목을 수정하면 Supabase에 즉시 저장되어 모든 사용자에게 반영됩니다.</p>
+      <button class="btn btn-secondary btn-sm" onclick="loadSettings()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        새로고침
+      </button>
+    </div>
+    <div class="settings-grid" id="settingsGrid">
+      <div class="empty-state">설정을 불러오는 중...</div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ==================== CONSTANTS ====================
+const FIELD_META = [
+  // field_key, label (한국어), section
+  { key: 'operator',      label: '운영주체',        section: 'campaign' },
+  { key: 'brand',         label: '브랜드 코드',      section: 'campaign' },
+  { key: 'channel',       label: '채널',             section: 'campaign' },
+  { key: 'promo_type',    label: '프로모션 구분',    section: 'campaign' },
+  { key: 'campaign_type', label: '캠페인 유형',      section: 'campaign' },
+  { key: 'ad_product',    label: '광고 상품',        section: 'campaign' },
+  { key: 'conversion',    label: '전환 목표',        section: 'campaign' },
+  { key: 'os',            label: 'OS',               section: 'campaign' },
+  { key: 'promo_detail',  label: '프로모션 상세',    section: 'adgroup' },
+  { key: 'placement',     label: '지면',             section: 'adgroup' },
+  { key: 'product',       label: '제품 코드',        section: 'adgroup' },
+  { key: 'targeting',     label: '타겟팅 방식',      section: 'adgroup' },
+  { key: 'detarget',      label: '디타겟팅',         section: 'adgroup' },
+  { key: 'age',           label: '연령',             section: 'adgroup' },
+  { key: 'gender',        label: '성별',             section: 'adgroup' },
+  { key: 'device',        label: '기기',             section: 'adgroup' },
+  { key: 'region',        label: '지역',             section: 'adgroup' },
+  { key: 'creative_type', label: '소재 형태',        section: 'creative' },
+  { key: 'usp',           label: '핵심 USP',         section: 'creative' },
+  { key: 'objet',         label: '오브제 특징',      section: 'creative' },
+];
+
+const DEFAULT_CODES = {
+  operator:      [{ label: 'bataa', value: 'bataa' }, { label: 'greenity', value: 'greenity' }],
+  brand:         [{ label: '생활양식 (id)', value: 'id' }, { label: '클린뷰 (cv)', value: 'cv' }, { label: '클린햇 (ch)', value: 'ch' }],
+  channel:       [{ label: '메타 (meta)', value: 'meta' }, { label: '네이버 (naver)', value: 'naver' }, { label: '쿠팡 (coupang)', value: 'coupang' }, { label: '올리브영몰 (oym)', value: 'oym' }, { label: '오늘의집 (ohouse)', value: 'ohouse' }],
+  promo_type:    [{ label: '프로모션 (pro)', value: 'pro' }, { label: '상시 (always)', value: 'always' }, { label: '론칭 (launch)', value: 'launch' }],
+  campaign_type: [{ label: '협력광고 (col)', value: 'col' }, { label: '퍼포먼스 (perf)', value: 'perf' }, { label: '브랜드 (brand)', value: 'brand' }],
+  ad_product:    [{ label: '전환 (conv)', value: 'conv' }, { label: '트래픽 (traffic)', value: 'traffic' }, { label: '인지 (awareness)', value: 'awareness' }],
+  conversion:    [{ label: '구매 (buy)', value: 'buy' }, { label: '장바구니 (cart)', value: 'cart' }, { label: '앱설치 (install)', value: 'install' }],
+  os:            [{ label: '전체 (all)', value: 'all' }, { label: 'iOS (ios)', value: 'ios' }, { label: 'Android (aos)', value: 'aos' }],
+  promo_detail:  [{ label: '가정의달 (family)', value: 'family' }, { label: '론칭 (launch)', value: 'launch' }, { label: '블랙프라이데이 (bf)', value: 'bf' }, { label: '상시 (always)', value: 'always' }],
+  placement:     [{ label: '통합 (all)', value: 'all' }, { label: '피드 (feed)', value: 'feed' }, { label: '릴스 (reels)', value: 'reels' }, { label: '스토리 (story)', value: 'story' }],
+  product:       [{ label: 'LG청소기헤드 (lghead)', value: 'lghead' }, { label: '퍼펙트올인원 (pfall)', value: 'pfall' }, { label: '클린햇 (cleanhat)', value: 'cleanhat' }, { label: '사푸니 (sapuni)', value: 'sapuni' }],
+  targeting:     [{ label: '장바구니7일 (c7)', value: 'c7' }, { label: '광범위 (broad)', value: 'broad' }, { label: '관심사 (interest)', value: 'interest' }, { label: '리타겟 (retarget)', value: 'retarget' }],
+  detarget:      [{ label: '없음 (X)', value: 'X' }, { label: '구매자제외 (buyer)', value: 'buyer' }, { label: '방문자제외 (visit)', value: 'visit' }],
+  age:           [{ label: '전체 (all)', value: 'all' }, { label: '20-50대 (2050)', value: '2050' }, { label: '30-40대 (3040)', value: '3040' }],
+  gender:        [{ label: '전체 (all)', value: 'all' }, { label: '여성 (f)', value: 'f' }, { label: '남성 (m)', value: 'm' }],
+  device:        [{ label: '전체 (all)', value: 'all' }, { label: '모바일 (mobile)', value: 'mobile' }, { label: 'PC (pc)', value: 'pc' }],
+  region:        [{ label: '전체 (all)', value: 'all' }, { label: '서울 (seoul)', value: 'seoul' }, { label: '전국 (kr)', value: 'kr' }],
+  creative_type: [{ label: '컬렉션 (col)', value: 'col' }, { label: '이미지 (img)', value: 'img' }, { label: '영상 (video)', value: 'video' }, { label: '슬라이드 (slide)', value: 'slide' }],
+  usp:           [{ label: '혜택소구 (benefit)', value: 'benefit' }, { label: '가격비교 (price)', value: 'price' }, { label: '후기 (review)', value: 'review' }, { label: '문제인식 (problem)', value: 'problem' }],
+  objet:         [{ label: '누끼컷 (cutout)', value: 'cutout' }, { label: '라이프스타일 (lifestyle)', value: 'lifestyle' }, { label: 'UGC (ugc)', value: 'ugc' }, { label: '비포애프터 (beforeafter)', value: 'beforeafter' }],
+};
+
+// ==================== SUPABASE ====================
+let supabase = null;
+let codesCache = {}; // { field_key: [{id, label, value, sort_order}] }
+let isConnected = false;
+
+async function initSupabase() {
+  if (!CONFIG.supabaseUrl || CONFIG.supabaseUrl === 'YOUR_SUPABASE_URL') {
+    setDbStatus(false, 'Supabase 미연결 (기본값 사용)');
+    useDefaultCodes();
+    return;
+  }
+  try {
+    supabase = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
+    const { error } = await supabase.from('utm_codes').select('id').limit(1);
+    if (error) throw error;
+    isConnected = true;
+    setDbStatus(true, 'Supabase 연결됨');
+    await loadCodesFromDB();
+  } catch (e) {
+    console.warn('Supabase 연결 실패:', e);
+    setDbStatus(false, 'DB 연결 실패 (기본값 사용)');
+    useDefaultCodes();
+  }
+}
+
+function setDbStatus(connected, text) {
+  document.getElementById('dbDot').className = 'db-dot' + (connected ? ' connected' : '');
+  document.getElementById('dbStatusText').textContent = text;
+}
+
+async function loadCodesFromDB() {
+  showLoading(true);
+  try {
+    const { data, error } = await supabase
+      .from('utm_codes')
+      .select('*')
+      .order('field_key')
+      .order('sort_order');
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      await seedDefaultCodes();
+      return;
+    }
+
+    codesCache = {};
+    data.forEach(row => {
+      if (!codesCache[row.field_key]) codesCache[row.field_key] = [];
+      codesCache[row.field_key].push(row);
+    });
+    populateAllSelects();
+  } catch (e) {
+    console.error(e);
+    useDefaultCodes();
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function seedDefaultCodes() {
+  const rows = [];
+  let order = 0;
+  for (const [key, items] of Object.entries(DEFAULT_CODES)) {
+    items.forEach((item, i) => {
+      rows.push({ field_key: key, label: item.label, value: item.value, sort_order: i });
+    });
+  }
+  const { error } = await supabase.from('utm_codes').insert(rows);
+  if (!error) {
+    showToast('초기 데이터를 Supabase에 저장했습니다.', 'success');
+    await loadCodesFromDB();
+  } else {
+    console.error(error);
+    useDefaultCodes();
+  }
+}
+
+function useDefaultCodes() {
+  codesCache = {};
+  for (const [key, items] of Object.entries(DEFAULT_CODES)) {
+    codesCache[key] = items.map((item, i) => ({ id: null, field_key: key, label: item.label, value: item.value, sort_order: i }));
+  }
+  populateAllSelects();
+}
+
+// ==================== DROPDOWNS ====================
+function populateAllSelects() {
+  FIELD_META.forEach(({ key }) => {
+    const sel = document.getElementById(`f_${key}`);
+    if (!sel) return;
+    const items = codesCache[key] || [];
+    sel.innerHTML = items.map(item => `<option value="${item.value}">${item.label}</option>`).join('');
+  });
+}
+
+// ==================== GENERATE ====================
+function getVal(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return mm + dd;
+}
+
+function generateUTM() {
+  const operator    = getVal('f_operator');
+  const brand       = getVal('f_brand');
+  const channel     = getVal('f_channel');
+  const promoType   = getVal('f_promo_type');
+  const campaignType= getVal('f_campaign_type');
+  const adProduct   = getVal('f_ad_product');
+  const conversion  = getVal('f_conversion');
+  const os          = getVal('f_os');
+
+  const promoDetail = getVal('f_promo_detail');
+  const placement   = getVal('f_placement');
+  const product     = getVal('f_product');
+  const targeting   = getVal('f_targeting');
+  const detarget    = getVal('f_detarget');
+  const age         = getVal('f_age');
+  const gender      = getVal('f_gender');
+  const device      = getVal('f_device');
+  const region      = getVal('f_region');
+
+  const creativeType= getVal('f_creative_type');
+  const usp         = getVal('f_usp');
+  const objet       = getVal('f_objet');
+  const dateStr     = getVal('f_date');
+  const landingUrl  = getVal('f_landing_url');
+
+  if (!landingUrl) {
+    showToast('랜딩 URL을 입력해주세요.', 'error');
+    document.getElementById('f_landing_url').focus();
+    return;
+  }
+
+  const dateCode = formatDate(dateStr);
+
+  // 캠페인명: 운영주체_브랜드_채널_프로모션구분_캠페인유형_광고상품_전환목표_OS
+  const campaignName = [operator, brand, channel, promoType, campaignType, adProduct, conversion, os].join('_');
+
+  // 광고그룹명: 브랜드_프로모션_지면_제품_타겟팅방식_디타겟-연령-성별_기기-지역
+  const adgroupName = `${brand}_${promoDetail}_${placement}_${product}_${targeting}_${detarget}-${age}-${gender}_${device}-${region}`;
+
+  // 소재명: 브랜드_제품_프로모션_지면_소재형태_핵심USP_오브제특징_일자
+  const creativeName = [brand, product, promoDetail, placement, creativeType, usp, objet, dateCode].join('_');
+
+  // UTM URL
+  const base = landingUrl.includes('?') ? landingUrl + '&' : landingUrl + '?';
+  const utmUrl = `${base}utm_source=${encodeURIComponent(channel)}&utm_medium=${encodeURIComponent(adProduct)}&utm_campaign=${encodeURIComponent(campaignName)}&utm_content=${encodeURIComponent(adgroupName)}&utm_term=${encodeURIComponent(creativeName)}`;
+
+  document.getElementById('res_campaign').textContent = campaignName;
+  document.getElementById('res_adgroup').textContent = adgroupName;
+  document.getElementById('res_creative').textContent = creativeName;
+  document.getElementById('res_url').textContent = utmUrl;
+
+  document.getElementById('resultsSection').style.display = 'block';
+  document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // 히스토리 저장
+  saveHistory({ campaignName, adgroupName, creativeName, utmUrl });
+  showToast('UTM이 생성되었습니다!', 'success');
+}
+
+// ==================== COPY ====================
+function copyResult(id, btn) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '복사됨 ✓';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('copied'); }, 1800);
+  });
+}
+
+function copyAll() {
+  const campaign = document.getElementById('res_campaign').textContent;
+  const adgroup  = document.getElementById('res_adgroup').textContent;
+  const creative = document.getElementById('res_creative').textContent;
+  const url      = document.getElementById('res_url').textContent;
+  const text = `캠페인명: ${campaign}\n광고그룹명: ${adgroup}\n소재명: ${creative}\nUTM URL: ${url}`;
+  navigator.clipboard.writeText(text).then(() => showToast('전체 복사 완료!', 'success'));
+}
+
+// ==================== HISTORY ====================
+function saveHistory(item) {
+  const history = getHistory();
+  history.unshift({ ...item, time: new Date().toISOString() });
+  if (history.length > 50) history.pop();
+  localStorage.setItem('utm_history', JSON.stringify(history));
+}
+
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem('utm_history') || '[]'); } catch { return []; }
+}
+
+function renderHistory() {
+  const history = getHistory();
+  const tbody = document.getElementById('historyBody');
+  const empty = document.getElementById('historyEmpty');
+  if (history.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  tbody.innerHTML = history.map(item => {
+    const t = new Date(item.time);
+    const timeStr = `${t.getMonth()+1}/${t.getDate()} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
+    return `<tr>
+      <td style="white-space:nowrap;">${timeStr}</td>
+      <td title="${item.campaignName}">${item.campaignName}</td>
+      <td title="${item.adgroupName}">${item.adgroupName}</td>
+      <td title="${item.creativeName}">${item.creativeName}</td>
+      <td class="url-cell"><a class="url-link" href="${item.utmUrl}" target="_blank" title="${item.utmUrl}">링크 열기</a></td>
+    </tr>`;
+  }).join('');
+}
+
+function clearHistory() {
+  if (!confirm('히스토리를 모두 삭제하시겠습니까?')) return;
+  localStorage.removeItem('utm_history');
+  renderHistory();
+  showToast('히스토리가 삭제되었습니다.');
+}
+
+// ==================== SETTINGS ====================
+async function loadSettings() {
+  if (isConnected) {
+    await loadCodesFromDB();
+  }
+  renderSettings();
+}
+
+function renderSettings() {
+  const grid = document.getElementById('settingsGrid');
+  grid.innerHTML = FIELD_META.map(({ key, label }) => {
+    const items = codesCache[key] || [];
+    const itemsHtml = items.map(item => `
+      <div class="code-item" data-id="${item.id}" data-key="${key}">
+        <span class="code-label">${item.label}</span>
+        <span class="code-badge">${item.value}</span>
+        <div class="code-actions">
+          <button class="btn btn-sm btn-secondary btn-icon" onclick="editCode('${key}', ${JSON.stringify(item.id)}, '${item.label.replace(/'/g,"\\'")}', '${item.value}')" title="수정">✏️</button>
+          <button class="btn btn-sm btn-danger btn-icon" onclick="deleteCode('${key}', ${JSON.stringify(item.id)}, '${item.label.replace(/'/g,"\\'")}')" title="삭제">🗑</button>
+        </div>
+      </div>
+    `).join('');
+    return `
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <span class="settings-card-title">${label}</span>
+        </div>
+        <div class="settings-card-body">
+          ${itemsHtml || '<p style="color:var(--muted);font-size:13px;">항목 없음</p>'}
+          <div class="add-code-row">
+            <input type="text" id="add_label_${key}" placeholder="표시명 (예: 유튜브)" />
+            <input type="text" id="add_value_${key}" placeholder="코드 (예: youtube)" style="max-width:100px;" />
+            <button class="btn btn-primary btn-sm" onclick="addCode('${key}')">추가</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function addCode(fieldKey) {
+  const labelEl = document.getElementById(`add_label_${fieldKey}`);
+  const valueEl = document.getElementById(`add_value_${fieldKey}`);
+  const label = labelEl.value.trim();
+  const value = valueEl.value.trim();
+  if (!label || !value) { showToast('표시명과 코드를 모두 입력해주세요.', 'error'); return; }
+
+  const items = codesCache[fieldKey] || [];
+  const sort_order = items.length;
+
+  if (isConnected) {
+    const { data, error } = await supabase.from('utm_codes')
+      .insert({ field_key: fieldKey, label, value, sort_order })
+      .select().single();
+    if (error) { showToast('저장 실패: ' + error.message, 'error'); return; }
+    if (!codesCache[fieldKey]) codesCache[fieldKey] = [];
+    codesCache[fieldKey].push(data);
+  } else {
+    if (!codesCache[fieldKey]) codesCache[fieldKey] = [];
+    codesCache[fieldKey].push({ id: null, field_key: fieldKey, label, value, sort_order });
+  }
+
+  labelEl.value = ''; valueEl.value = '';
+  populateAllSelects();
+  renderSettings();
+  showToast('추가되었습니다.', 'success');
+}
+
+async function editCode(fieldKey, id, oldLabel, oldValue) {
+  const newLabel = prompt('표시명:', oldLabel);
+  if (newLabel === null) return;
+  const newValue = prompt('코드값:', oldValue);
+  if (newValue === null) return;
+  if (!newLabel.trim() || !newValue.trim()) { showToast('값을 입력해주세요.', 'error'); return; }
+
+  if (isConnected && id) {
+    const { error } = await supabase.from('utm_codes').update({ label: newLabel.trim(), value: newValue.trim() }).eq('id', id);
+    if (error) { showToast('수정 실패: ' + error.message, 'error'); return; }
+  }
+
+  const item = (codesCache[fieldKey] || []).find(i => i.id === id);
+  if (item) { item.label = newLabel.trim(); item.value = newValue.trim(); }
+  populateAllSelects();
+  renderSettings();
+  showToast('수정되었습니다.', 'success');
+}
+
+async function deleteCode(fieldKey, id, label) {
+  if (!confirm(`"${label}" 항목을 삭제하시겠습니까?`)) return;
+
+  if (isConnected && id) {
+    const { error } = await supabase.from('utm_codes').delete().eq('id', id);
+    if (error) { showToast('삭제 실패: ' + error.message, 'error'); return; }
+  }
+
+  codesCache[fieldKey] = (codesCache[fieldKey] || []).filter(i => i.id !== id);
+  populateAllSelects();
+  renderSettings();
+  showToast('삭제되었습니다.');
+}
+
+// ==================== TOAST ====================
+function showToast(msg, type = '') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = 'toast' + (type ? ` ${type}` : '');
+  toast.textContent = msg;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+// ==================== LOADING ====================
+function showLoading(show) {
+  document.getElementById('loadingOverlay').classList.toggle('show', show);
+}
+
+// ==================== TABS ====================
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(`tab-${tab}`).classList.add('active');
+    if (tab === 'history') renderHistory();
+    if (tab === 'settings') renderSettings();
+  });
+});
+
+// ==================== INIT ====================
+(async function init() {
+  // 오늘 날짜 기본값
+  const today = new Date();
+  document.getElementById('f_date').value = today.toISOString().split('T')[0];
+  await initSupabase();
+})();
+</script>
+</body>
+</html>
