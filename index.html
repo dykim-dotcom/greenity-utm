@@ -718,13 +718,11 @@ function setDbStatus(connected, text) {
 }
 
 async function loadCodesFromDB() {
-  showLoading(true);
   try {
-    const { data, error } = await sbClient
-      .from('utm_codes')
-      .select('*')
-      .order('field_key')
-      .order('sort_order');
+    const { data, error } = await withTimeout(
+      sbClient.from('utm_codes').select('*').order('field_key').order('sort_order'),
+      8000
+    );
     if (error) throw error;
 
     if (!data || data.length === 0) {
@@ -738,29 +736,39 @@ async function loadCodesFromDB() {
       codesCache[row.field_key].push(row);
     });
     populateAllSelects();
+    renderSettings();
   } catch (e) {
-    console.error(e);
-    useDefaultCodes();
-  } finally {
-    showLoading(false);
+    console.error('loadCodesFromDB 실패:', e);
+    // 이미 useDefaultCodes로 기본값 적용된 상태 유지
   }
 }
 
 async function seedDefaultCodes() {
   const rows = [];
-  let order = 0;
   for (const [key, items] of Object.entries(DEFAULT_CODES)) {
     items.forEach((item, i) => {
       rows.push({ field_key: key, label: item.label, value: item.value, sort_order: i });
     });
   }
-  const { error } = await sbClient.from('utm_codes').insert(rows);
-  if (!error) {
-    showToast('초기 데이터를 Supabase에 저장했습니다.', 'success');
-    await loadCodesFromDB();
-  } else {
-    console.error(error);
-    useDefaultCodes();
+  try {
+    const { error } = await withTimeout(
+      sbClient.from('utm_codes').insert(rows),
+      8000
+    );
+    if (!error) {
+      showToast('초기 데이터를 Supabase에 저장했습니다.', 'success');
+      // 재귀 호출 대신 직접 파싱
+      codesCache = {};
+      for (const [key, items] of Object.entries(DEFAULT_CODES)) {
+        codesCache[key] = items.map((item, i) => ({
+          id: null, field_key: key, label: item.label, value: item.value, sort_order: i
+        }));
+      }
+      populateAllSelects();
+      renderSettings();
+    }
+  } catch (e) {
+    console.error('seedDefaultCodes 실패:', e);
   }
 }
 
