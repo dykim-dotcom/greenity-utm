@@ -431,6 +431,10 @@ const CONFIG = {
       <div class="section-title">캠페인 레벨</div>
       <div class="grid grid-4">
         <div class="field">
+          <label>매체 (utm_source)</label>
+          <select id="f_media"></select>
+        </div>
+        <div class="field">
           <label>운영주체</label>
           <select id="f_operator"></select>
         </div>
@@ -439,7 +443,7 @@ const CONFIG = {
           <select id="f_brand"></select>
         </div>
         <div class="field">
-          <label>채널 (utm_source)</label>
+          <label>채널 (캠페인명)</label>
           <select id="f_channel"></select>
         </div>
         <div class="field">
@@ -630,9 +634,10 @@ const CONFIG = {
 // ==================== CONSTANTS ====================
 const FIELD_META = [
   // field_key, label (한국어), section
-  { key: 'operator',      label: '운영주체',        section: 'campaign' },
-  { key: 'brand',         label: '브랜드 코드',      section: 'campaign' },
-  { key: 'channel',       label: '채널',             section: 'campaign' },
+  { key: 'media',         label: '매체 (utm_source)', section: 'campaign' },
+  { key: 'operator',      label: '운영주체',          section: 'campaign' },
+  { key: 'brand',         label: '브랜드 코드',        section: 'campaign' },
+  { key: 'channel',       label: '채널 (캠페인명)',    section: 'campaign' },
   { key: 'promo_type',    label: '프로모션 구분',    section: 'campaign' },
   { key: 'campaign_type', label: '캠페인 유형',      section: 'campaign' },
   { key: 'ad_product',    label: '광고 상품',        section: 'campaign' },
@@ -653,13 +658,14 @@ const FIELD_META = [
 ];
 
 const DEFAULT_CODES = {
-  operator:      [{ label: 'bataa', value: 'bataa' }, { label: 'greenity', value: 'greenity' }],
+  media:         [{ label: '메타 (meta)', value: 'meta' }],
+  operator:      [{ label: 'greenity', value: 'greenity' }],
   brand:         [{ label: '생활양식 (id)', value: 'id' }, { label: '클린뷰 (cv)', value: 'cv' }, { label: '클린햇 (ch)', value: 'ch' }],
-  channel:       [{ label: '메타 (meta)', value: 'meta' }, { label: '네이버 (naver)', value: 'naver' }, { label: '쿠팡 (coupang)', value: 'coupang' }, { label: '올리브영몰 (oym)', value: 'oym' }, { label: '오늘의집 (ohouse)', value: 'ohouse' }],
+  channel:       [{ label: '네이버 (naver)', value: 'naver' }, { label: '쿠팡 (coupang)', value: 'coupang' }, { label: '올리브영몰 (oym)', value: 'oym' }, { label: '오늘의집 (ohouse)', value: 'ohouse' }],
   promo_type:    [{ label: '프로모션 (pro)', value: 'pro' }, { label: '상시 (always)', value: 'always' }, { label: '론칭 (launch)', value: 'launch' }],
   campaign_type: [{ label: '협력광고 (col)', value: 'col' }, { label: '퍼포먼스 (perf)', value: 'perf' }, { label: '브랜드 (brand)', value: 'brand' }],
-  ad_product:    [{ label: '전환 (conv)', value: 'conv' }, { label: '트래픽 (traffic)', value: 'traffic' }, { label: '인지 (awareness)', value: 'awareness' }],
-  conversion:    [{ label: '구매 (buy)', value: 'buy' }, { label: '장바구니 (cart)', value: 'cart' }, { label: '앱설치 (install)', value: 'install' }],
+  ad_product:    [{ label: '수동전환 (manual)', value: 'manual' }, { label: '어드밴티지 (adv)', value: 'adv' }],
+  conversion:    [{ label: '구매 (buy)', value: 'buy' }, { label: '장바구니 (cart)', value: 'cart' }, { label: '앱설치 (install)', value: 'install' }, { label: '트래픽 (traffic)', value: 'traffic' }],
   os:            [{ label: '전체 (all)', value: 'all' }, { label: 'iOS (ios)', value: 'ios' }, { label: 'Android (aos)', value: 'aos' }],
   promo_detail:  [{ label: '가정의달 (family)', value: 'family' }, { label: '론칭 (launch)', value: 'launch' }, { label: '블랙프라이데이 (bf)', value: 'bf' }, { label: '상시 (always)', value: 'always' }],
   placement:     [{ label: '통합 (all)', value: 'all' }, { label: '피드 (feed)', value: 'feed' }, { label: '릴스 (reels)', value: 'reels' }, { label: '스토리 (story)', value: 'story' }],
@@ -805,6 +811,7 @@ function formatDate(dateStr) {
 }
 
 function generateUTM() {
+  const media       = getVal('f_media');
   const operator    = getVal('f_operator');
   const brand       = getVal('f_brand');
   const channel     = getVal('f_channel');
@@ -849,7 +856,7 @@ function generateUTM() {
 
   // UTM URL
   const base = landingUrl.includes('?') ? landingUrl + '&' : landingUrl + '?';
-  const utmUrl = `${base}utm_source=${encodeURIComponent(channel)}&utm_medium=${encodeURIComponent(adProduct)}&utm_campaign=${encodeURIComponent(campaignName)}&utm_content=${encodeURIComponent(adgroupName)}&utm_term=${encodeURIComponent(creativeName)}`;
+  const utmUrl = `${base}utm_source=${encodeURIComponent(media)}&utm_medium=${encodeURIComponent(adProduct)}&utm_campaign=${encodeURIComponent(campaignName)}&utm_content=${encodeURIComponent(adgroupName)}&utm_term=${encodeURIComponent(creativeName)}`;
 
   document.getElementById('res_campaign').textContent = campaignName;
   document.getElementById('res_adgroup').textContent = adgroupName;
